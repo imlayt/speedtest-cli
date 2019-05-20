@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 2012 Matt Martz
+# GUI interface Copyright 2019 Tom Imlay
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,6 +15,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+# ########################################################
+# change log - tom imlay
+# 20190518 - added additional import statements for GUI and for saving data to Sqlite database
+#
 
 import os
 import re
@@ -29,6 +35,10 @@ import platform
 import threading
 import xml.parsers.expat
 
+import PySimpleGUI as sg  # tom imlay
+import sqlite3            # tom imlay
+from sqlite3 import Error # tom imlay
+
 try:
     import gzip
     GZIP_BASE = gzip.GzipFile
@@ -37,6 +47,9 @@ except ImportError:
     GZIP_BASE = object
 
 __version__ = '2.1.1'
+lightblue = '#b9def4'
+mediumblue = '#d2d2df'
+
 
 
 class FakeShutdownEvent(object):
@@ -733,11 +746,12 @@ def print_dots(shutdown_event):
     def inner(current, total, start=False, end=False):
         if shutdown_event.isSet():
             return
-
-        sys.stdout.write('.')
+        sys.stdout.write('.') # tom imlay
+        # print('.') # tom imlay
         if current + 1 == total and end is True:
-            sys.stdout.write('\n')
-        sys.stdout.flush()
+            sys.stdout.write('\n') # tom imlay
+            # print('\n') # tom imlay
+        sys.stdout.flush() # tom imlay
     return inner
 
 
@@ -1748,19 +1762,22 @@ def printer(string, quiet=False, debug=False, error=False, **kwargs):
     if debug and not DEBUG:
         return
 
-    if debug:
-        if sys.stdout.isatty():
-            out = '\033[1;30mDEBUG: %s\033[0m' % string
-        else:
-            out = 'DEBUG: %s' % string
-    else:
-        out = string
+    # if debug:
+    #     if sys.stdout.isatty():
+    #         out = '\033[1;30mDEBUG: %s\033[0m' % string
+    #     else:
+    #         out = 'DEBUG: %s' % string
+    # else:
+    #     out = string
+    out = string
 
     if error:
         kwargs['file'] = sys.stderr
 
     if not quiet:
-        print_(out, **kwargs)
+        # print_(out, **kwargs)
+        print(out, **kwargs)  # std out redirected to the gui
+        window.Refresh()
 
 
 def shell():
@@ -1874,6 +1891,10 @@ def shell():
 
     printer('Hosted by %(sponsor)s (%(name)s) [%(d)0.2f km]: '
             '%(latency)s ms' % results.server, quiet)
+    servervalues = ('Hosted by %(sponsor)s (%(name)s) [%(d)0.2f km]: '
+            '%(latency)s ms' % results.server)
+    window.FindElement('_SERVER_').Update(servervalues)
+    window.Refresh()
 
     if args.download:
         printer('Testing download speed', quiet,
@@ -1886,6 +1907,12 @@ def shell():
                 ((results.download / 1000.0 / 1000.0) / args.units[1],
                  args.units[0]),
                 quiet)
+
+        downloadvalue = (('%0.2f M%s/s' %
+                ((results.download / 1000.0 / 1000.0) / args.units[1],
+                 args.units[0])))
+        window.FindElement('_DOWNLOAD_').Update(downloadvalue) # tom imlay
+        window.Refresh() # tom imlay
     else:
         printer('Skipping download test', quiet)
 
@@ -1901,6 +1928,12 @@ def shell():
                 ((results.upload / 1000.0 / 1000.0) / args.units[1],
                  args.units[0]),
                 quiet)
+
+        uploadvalue = (('%0.2f M%s/s' %
+                ((results.upload / 1000.0 / 1000.0) / args.units[1],
+                 args.units[0])))
+        window.FindElement('_UPLOAD_').Update(uploadvalue) # tom imlay
+        window.Refresh() # tom imlay
     else:
         printer('Skipping upload test', quiet)
 
@@ -1925,20 +1958,68 @@ def shell():
         printer('Share results: %s' % results.share())
 
 
+def write_to_message_area(message):
+    window.FindElement('_MESSAGEAREA_').Update(message)
+    window.Refresh()
+
+column_options_1 = [[sg.T('Option 1'), sg.InputText(key='_OPTION1_')],
+                    [sg.T('Option 2'), sg.InputText(key='_OPTION2_')],
+                    [sg.T('Option 3'), sg.InputText(key='_OPTION3_')]
+                    ]
+
+column_options_2 = [[sg.T('Option 4'), sg.InputText(key='_OPTION4_')],
+                    [sg.T('Option 5'), sg.InputText(key='_OPTION5_')],
+                    [sg.T('Option 6'), sg.InputText(key='_OPTION6_')]
+                    ]
+
+column_options_3 = [[sg.T('Option 7'), sg.InputText(key='_OPTION7_')],
+                    [sg.T('Option 8'), sg.InputText(key='_OPTION8_')],
+                    [sg.T('Option 9'), sg.InputText(key='_OPTION9_')]
+                    ]
+
+windowlayout = [[sg.T('Output')],
+                [sg.Output(size=(100, 12), key='_OUTPUT_')],
+                [sg.T('Server'), sg.InputText('selecting server', size=(100, 1), key='_SERVER_')],
+                [sg.ProgressBar(200, size=(60, 10), key='_PROGRESSBAR_')],
+                [sg.T('Ping:'), sg.InputText('', size=(20, 1), key='_PING_'),
+                 sg.T('Download:'), sg.InputText('', size=(20, 1), key='_DOWNLOAD_'),
+                 sg.T('Upload:'), sg.InputText('', size=(20, 1), key='_UPLOAD_')],
+                [sg.Column(column_options_1), sg.Column(column_options_2), sg.Column(column_options_3)],
+                [sg.Text('Message Area', size=(100, 1), key='_MESSAGEAREA_')],
+                [sg.Button('Run Test', key='_RUNTEST_'), sg.Exit()]                ]
+
+
+window = sg.Window('Speed Test - GUI', border_depth = 5, default_element_size=(20, 1), background_color=lightblue).Layout((windowlayout))
+# initialize mainscreen window
+window.Finalize()
+
+# fill_companylistbox(con, window)
+window.Refresh()
+
+
 def main():
-    try:
-        shell()
-    except KeyboardInterrupt:
-        printer('\nCancelling...', error=True)
-    except (SpeedtestException, SystemExit):
-        e = get_exception()
-        # Ignore a successful exit, or argparse exit
-        if getattr(e, 'code', 1) not in (0, 2):
-            msg = '%s' % e
-            if not msg:
-                msg = '%r' % e
-            raise SystemExit('ERROR: %s' % msg)
+    while True:
+        event, values = window.Read()
+        if event == 'Exit':
+            sys.exit(0)
+        elif event is None:
+            sys.exit_info(0)
+        elif event == '_RUNTEST_':
+            window.FindElement('_OUTPUT_').Update('')
+            write_to_message_area('Speedtest Starting')
+            try:
+                shell()
+            except KeyboardInterrupt:
+                printer('\nCancelling...', error=True)
+            except (SpeedtestException, SystemExit):
+                e = get_exception()
+                # Ignore a successful exit, or argparse exit
+                if getattr(e, 'code', 1) not in (0, 2):
+                    msg = '%s' % e
+                if not msg:
+                    msg = '%r' % e
+                raise SystemExit('ERROR: %s' % msg)
 
-
+            write_to_message_area('Speedtest Complete')
 if __name__ == '__main__':
     main()
