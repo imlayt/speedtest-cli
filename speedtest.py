@@ -747,12 +747,12 @@ def print_dots(shutdown_event):
         if shutdown_event.isSet():
             return
 
-        # sys.stdout.write('.') # tom imlay
-        print('.') # tom imlay
+        sys.stdout.write('.') # tom imlay
+        # print('.') # tom imlay
         if current + 1 == total and end is True:
-            # sys.stdout.write('\n') # tom imlay
-            print('\n') # tom imlay
-        # sys.stdout.flush() # tom imlay
+            sys.stdout.write('\n') # tom imlay
+            # print('\n') # tom imlay
+        sys.stdout.flush() # tom imlay
     return inner
 
 
@@ -1776,8 +1776,8 @@ def printer(string, quiet=False, debug=False, error=False, **kwargs):
         kwargs['file'] = sys.stderr
 
     if not quiet:
-        # print_(out, **kwargs)
-        print(out, **kwargs)  # std out redirected to the gui
+        print_(out, **kwargs)
+        # print(out, **kwargs)  # std out redirected to the gui
         window.Refresh()
 
 
@@ -1895,7 +1895,9 @@ def shell():
     servervalues = ('Hosted by %(sponsor)s (%(name)s) [%(d)0.2f km]: '
             '%(latency)s ms' % results.server)
     window.FindElement('_SERVER_').Update(servervalues)
+    window.FindElement('_PING_').Update(results.server['latency'])
     window.Refresh()
+    # print('results.server[latency] => %0.2f', results.server['latency'])
 
     if args.download:
         printer('Testing download speed', quiet,
