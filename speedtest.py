@@ -49,7 +49,7 @@ except ImportError:
 __version__ = '2.1.1'
 lightblue = '#b9def4'
 mediumblue = '#d2d2df'
-
+progbarvalue = 0
 
 
 class FakeShutdownEvent(object):
@@ -748,13 +748,11 @@ def print_dots(shutdown_event):
             return
 
         sys.stdout.write('.') # tom imlay
-        # print('.') # tom imlay
         if current + 1 == total and end is True:
             sys.stdout.write('\n') # tom imlay
-            # print('\n') # tom imlay
         sys.stdout.flush() # tom imlay
-    return inner
 
+    return inner
 
 def do_nothing(*args, **kwargs):
     pass
@@ -1785,6 +1783,8 @@ def shell():
     """Run the full speedtest.net test"""
 
     global DEBUG
+    global progbarvalue
+
     shutdown_event = threading.Event()
 
     signal.signal(signal.SIGINT, ctrl_c(shutdown_event))
@@ -1828,7 +1828,6 @@ def shell():
         callback = do_nothing
     else:
         callback = print_dots(shutdown_event)
-
     printer('Retrieving speedtest.net configuration...', quiet)
     try:
         speedtest = Speedtest(
@@ -1983,16 +1982,17 @@ column_options_3 = [[sg.T('Option 7'), sg.InputText(key='_OPTION7_')],
 windowlayout = [[sg.T('Output')],
                 [sg.Output(size=(100, 12))],
                 [sg.T('Server'), sg.InputText('selecting server', size=(100, 1), key='_SERVER_')],
-                [sg.ProgressBar(200, size=(60, 10))],
-                [sg.T('Ping:'), sg.InputText('', size=(20, 1), key='_PING_'),
+                [sg.T('Ping (ms):'), sg.InputText('', size=(20, 1), key='_PING_'),
                  sg.T('Download:'), sg.InputText('', size=(20, 1), key='_DOWNLOAD_'),
                  sg.T('Upload:'), sg.InputText('', size=(20, 1), key='_UPLOAD_')],
-                [sg.Column(column_options_1), sg.Column(column_options_2), sg.Column(column_options_3)],
-                [sg.Text('Message Area', size=(100, 1), key='_MESSAGEAREA_')],
-                [sg.Button('Run Test', key='_RUNTEST_'), sg.Exit()]                ]
+                [sg.Column(column_options_1), sg.Column(column_options_2),
+                 sg.Column(column_options_3),
+                 sg.ProgressBar(5, size=(10, 10), orientation='v', key='_PROGRESSBAR_')],
+                [sg.Text('Message Area', size=(60, 1), key='_MESSAGEAREA_')],
+                [sg.Button('Run Test', key='_RUNTEST_'), sg.Exit()]]
 
 
-window = sg.Window('Speed Test - GUI', border_depth = 5, default_element_size=(20, 1), background_color=lightblue).Layout((windowlayout))
+window = sg.Window('Speed Test - GUI', border_depth = 2, default_element_size=(20, 1), background_color=lightblue).Layout((windowlayout))
 # initialize mainscreen window
 window.Finalize()
 
@@ -2003,10 +2003,8 @@ window.Refresh()
 def main():
     while True:
         event, values = window.Read()
-        if event == 'Exit':
+        if event == 'Exit' or event is None:
             sys.exit(0)
-        elif event is None:
-            sys.exit_info(0)
         elif event == '_RUNTEST_':
             try:
                 shell()
