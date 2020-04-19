@@ -747,7 +747,7 @@ def print_dots(shutdown_event):
         if shutdown_event.isSet():
             return
 
-        sys.stdout.write('.') # tom imlay
+        sys.stdout.write('>') # tom imlay
         if current + 1 == total and end is True:
             sys.stdout.write('\n') # tom imlay
         sys.stdout.flush() # tom imlay
@@ -1992,7 +1992,7 @@ windowlayout = [[sg.T('Output')],
                 [sg.Button('Run Test', key='_RUNTEST_'), sg.Exit()]]
 
 
-window = sg.Window('Speed Test - GUI', border_depth = 2, default_element_size=(20, 1), background_color=lightblue).Layout((windowlayout))
+window = sg.Window('Speed Test - GUI', border_depth = 2, default_element_size=(20, 1), background_color='darkblue').Layout((windowlayout))
 # initialize mainscreen window
 window.Finalize()
 
